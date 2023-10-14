@@ -89,6 +89,15 @@ Connecte/Déconnecte un conteneur en cours d’exécution à un réseau existant
 
 Par defaut, avec le réseau `podman`, le service DNS est désactivé. Lorsque le service DNS est actif, le nom d'hôte du conteneur correspond au nom du conteneur (dans le réseau)
 
+La commande suivante permet de lister les mappages de ports pour tout les conteneur : 
+```bash
+$ podman port --all
+```
+Si un conteneur appelé my-app est associé au réseau apps. La commande suivante récupère l’adresse IP privée du conteneur dans le réseau apps
+```bash
+$ podman inspect my-app \
+  -f '{{.NetworkSettings.Networks.apps.IPAddress}}'
+```
 
 
 
