@@ -640,3 +640,30 @@ Par exemple pour un conteneur PostreSQL
 $ podman exec POSTGRESQL_CONTAINER \
   pg_dump -Fc DATABASE -f BACKUP_DUMP
 ```
+
+
+## Journalisation
+Il arrive qu’un conteneur ne parvienne pas à démarrer pour différentes raisons ; par exemple, en raison d’une configuration manquante ou d’un problème d’accès aux fichiers.
+Pour accéder au logs du container vous pouvez utiliser la commande : 
+```bash
+$ podman logs [container]
+```
+Quelques commande utils pour débuger l'exécution dun container
+```bash
+$ podman port CONTAINER				// Accéder au mappage de port du conteneur
+```
+Pour vérifier les ports d’application en cours d’utilisation, listez les ports réseau ouverts dans le conteneur en cours d’exécution. 
+(aide : socket statistics (ss)
+ -p affiche le processus qui utilise le socket, 
+ -a affiche les connexions établies et en cours d'écoute
+ -n affiche les adresses IP.
+ -t affiche les socket TCP.
+)
+```bash
+$ podman exec -it CONTAINER ss -pant			
+```
+Pour cibler un espace de nom de conteneur:  (pour récuper le PID du conteneur `podman inspect CONTAINER --format '{{.State.Pid}}'`)
+```bash
+$ sudo nsenter -n -t CONTAINER_PID ss -pant
+```
+> **Note** : Les applications en conteneur doivent écouter sur l’adresse 0.0.0.0, qui fait référence à toute interface réseau à l’intérieur du conteneur. L’utilisation de l’interface de bouclage 127.0.0.1 empêche l’application de communiquer en dehors du conteneur.
