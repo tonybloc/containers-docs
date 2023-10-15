@@ -99,5 +99,71 @@ $ podman inspect my-app \
   -f '{{.NetworkSettings.Networks.apps.IPAddress}}'
 ```
 
+La commande suivante, permet d'exécuter une nouveau processus dans un conteneur en cours d'exécution
+```bash
+$ podman exec [options] container [commande ...]
+```
+Exemple :
+```bash
+$ podman exec httpd cat /etc/httpd/conf/httpd.conf      // httpd étant le conteneur, et cat /etc/httpd/... la commande
+```
+
+Options disponible
+```bash
+$ podman exec --env (ou -e) [container] [commande]                  // pour spécifier des variable d'environnement
+$ podman exec --interactive (ou -i) [container] [commande]          // pour indiquer au conteneur d'accepter l'entrée
+$ podman exec --tty (ou -t) [container] [commande]                  // pour allouer un pseudo terminal
+$ podman exec --latest (ou -l)                                      // pour exécuter la commande dans le dernier conteneur crée
+```
+
+Exemple, on définie une nouvelle variable d'environnement (temporaire, cad qu'a la fin du process env, la variable d'env ne sera pas percisté) dans le dernier container créer puis on execture la commande env pour lister les variable d'environnement du conteneur.
+```bash
+$ podman exec -e ENVIRONMENT=dev -l env
+```
+
+Pour ouvrir un shell dans le container cible, vous pouvez utiliser la commande suivante : (il fautdra utiliser la commande exit pour fermer la session interative
+```bash
+$ podman exec -ti httpd /bin/bash
+```
+
+Certain conteneur (notement pour la production), ne dispose pas des utilitaire `cat`, ou `vi` pour éditer/affiche le contenu d'un fichier. Mais il est possible de copier des fichier de l'hote vers le conteneur et invesement avec les commande suivante : 
+```bash
+$ podman cp [options] [container:]source_path [container:]destination_path
+```
+Exemple : Copier le fichier /tmps/logs à du conteneur 'a3b4564a687e' dans le répertoire actuel
+```bash
+$ podman cp a3b4564a687e:/tmp/logs .
+```
+Exemple : Copier le fichier nginx.conf du system dans le répertoir /etc/nginx du conteneur 'a3b4564a687e'
+```bash
+$ podman cp ./nginx.conf a3b4564a687e:/etc/nginx
+```
 
 
+Il vous est possible de récupérer l'ensemble des informations d'un conteneur avec la commande : 
+```bash
+$ podman inspect [container]
+```
+
+Cette commande retourn un tableau JSON qui affiche des information sur different aspect du conteneur (Paramètre réseau, utilisation du processus, variable d'environnement, mappage de port, volumes, ...)
+Pour recherche une information précessis dans ce tableau vous pouvez utiliser l'option suivante
+
+```bash 
+$ podman insepect --format='{{.State.Status}}' [container]
+```
+
+Commande pour gérer le cycle de vie d'un conteneur: 
+
+```bash
+$ podman stop [container]
+$ podman stop --all [container]
+$ podman stop --time=100 [container]
+
+$ podman kill [container]
+$ podman pause [container]
+$ podman unpause [container]
+$ podman restart [container]
+$ podman rm [container]         // Suppression de conteneur
+$ podman rm --force
+$ podman rm --all
+```
