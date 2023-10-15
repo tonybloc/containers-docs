@@ -8,6 +8,8 @@ Une image de conteneur est référencée sous la forme : `NAME:VERSION`
 ```bash
 $ podman pull registry.redhat.io/rhel7/rhel:7.9
 ```
+Les images récupérer sont stocké (pout les utilsiateur non root) dans le répertoire : `~/.local/share/containers`
+Pour les utilisateur root, les images sont stocké dans le répertoire : `/var/lib/containers` (ces images sont affiché uniquement avec la commande : `$ podman images ls`
 
 L'image est ensuite stockée en local sur le système.
 Pour lister les images existantes sur le système, vous devez utilier la commande `podman image`
@@ -167,3 +169,112 @@ $ podman rm [container]         // Suppression de conteneur
 $ podman rm --force
 $ podman rm --all
 ```
+
+
+## Gestion des registres d'images (avec Skopeo)
+
+Exemple de registre existant : Quay.io, Red Hat Registry (https://catalog.redhat.com/), Docker Hub et Amazon ECR.
+
+`registry.access.redhat.com` : ne nécessite aucune authentification
+`registry.redhat.io` : nécessite une authentification
+
+Lorsqu'on utilise la commande `$ podman pull [registre][image-path][:tag]` sans spécifier de registre, par défaut podman utilise le fichier `/etc/containers/registries.conf` pour recherche le registre de conteneur susceptible de contenir le nom de l'image rechercher 
+Par exemple, avec la configuration suivante, Podman effectue une recherche dans Red Hat Registry. Si l’image est introuvable dans Red Hat Registry, Podman effectue une recherche dans le registre de Docker Hub.
+`unqualified-search-registries == ['registry.redhat.io', 'docker.io']`
+On pouvez également bloquer un registre
+`[[registry]]
+location="docker.io"
+blocked=true`
+
+Skopeo peut inspecter des images distantes ou transférer des images entre des registres sans utiliser le stockage local. La commande `skopeo` utilise le format `transport:image`, notamment `docker://remote_image, dir:path` ou `oci:path:tag`.
+Utilisez la commande `skopeo copy` pour copier des images entre des registres:
+```bash
+$ skopeo copy \
+ docker://registry.access.redhat.com/ubi9/nodejs-18 \
+ docker://quay.io/myuser/nodejs-18
+```
+
+Pour télécharger l'image en local (utilisez dir:...)
+```bash
+$ skopeo copy \
+ docker://registry.access.redhat.com/ubi9/nodejs-18 \
+ dir:/var/lib/images/nodejs-18
+```
+
+Pour se connecter à un registre nécessitant une authentication pour récupérer des images utiliser la commande
+```bash
+$ podman login [registre]
+```
+Les informations d'identification sont enregistré dans un fichier `${XDG_RUNTIME_DIR}/containers/auth.json` (skopeo utilise le même fichier)
+```bash
+$ cat ${XDG_RUNTIME_DIR}/containers/auth.json
+{
+	"auths": {
+		"registry.redhat.io": {
+			"auth": "dXNlcjpodW50ZXIy"
+		}
+	}
+}
+
+$ echo -n dXNlcjpodW50ZXIy | base64 -d
+user:hunter2
+
+```
+Pour créer de nouvelle baslise pour les images locales, on doit utiliser la commande suivante : 
+```bash
+$ podman image tag LOCAL_IMAGE:TAG LOCAL_IMAGE:NEW_TAG
+```
+Possible de recherche une image avec podamn. La recherche s'effectue sur les registre défini comme `unqualified-search-registries` du fichier `registries.conf`
+```bash
+$ podman search nginx
+```
+
+Pour compiler une image pour ensuite la poussé sur le registre Red Hat Quay.io, il est nécessaire d'effectuer les commandes suivante
+```bash
+$ podman build --file Containerfile --tag quay.io/YOUR_QUAY_USER/IMAGE_NAME:TAG
+$ podman push quay.io/YOUR_QUAY_USER/IMAGE_NAME:TAG
+```
+
+Comme pour la container/network/... la commande suivante permet d'afficher les informations d'une image local
+```bash
+$ podman image inspect [REGISTRY/USER/IMAGE8_PAHT:TAG]
+[
+   {
+    "Id": "6683...98ea",
+    ...output omitted...
+    "Config": {
+      "User": "27",                                                   // Utilisateur par défaut de l'image
+      "ExposedPorts": {                                               // Port que l'application expose
+           "3306/tcp": {}
+      },
+      "Env": [ 3
+           "PATH=/opt/app-root/src/bin:/opt/app-root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            ...output omitted...
+          ],
+      "Entrypoint": [                                               // Le point d’entrée, une commande exécutée au démarrage du conteneur
+           "container-entrypoint"
+      ],
+      "Cmd": [                                                     // La commande que le script container-entrypoint exécute
+           "run-mysqld"
+      ],
+      "WorkingDir": "/opt/app-root/src",                           // Le répertoire de travail des commandes dans l’image
+      "Labels": {                                                  // Des étiquettes fournissant des métadonnées supplémentaires
+         ...output omitted...
+         "release": "177.1654147959",
+         "summary": "MariaDB 10.3 SQL database server",
+         "url": "https://access.redhat.com/containers/#/registry.access.redhat.com/rhel8/mariadb-103/images/1-177.1654147959",
+        ...output omitted...
+    "Architecture": "amd64", 8
+    "Os": "linux",
+    "Size": 573593952,
+```
+
+Suppression d'image avec la commande
+```bash
+$ podman image rm [REGISTRY/NAMESPACE/IMAGE_NAME:TAG]
+$ podman image rm --all [REGISTRY/NAMESPACE/IMAGE_NAME:TAG]
+$ podman image prune
+$ podman image prune -a       // Pour supprimer les images inutilisé et ceux suspendues
+```
+
+
