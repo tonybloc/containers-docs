@@ -667,3 +667,65 @@ Pour cibler un espace de nom de conteneur:  (pour récuper le PID du conteneur `
 $ sudo nsenter -n -t CONTAINER_PID ss -pant
 ```
 > **Note** : Les applications en conteneur doivent écouter sur l’adresse 0.0.0.0, qui fait référence à toute interface réseau à l’intérieur du conteneur. L’utilisation de l’interface de bouclage 127.0.0.1 empêche l’application de communiquer en dehors du conteneur.
+
+
+## Application Multiconteneur avec Compose
+
+Description du fichier Compose
+
+version (obsolète) : spécifie la version de Compose utilisée.
+services : définit les conteneurs utilisés.
+networks : définit les réseaux utilisés par les conteneurs.
+volumes : spécifie les volumes utilisés par les conteneurs.
+configs : spécifie les configurations utilisées par les conteneurs.
+secrets : définit les secrets utilisés par les conteneurs.
+
+> **Note** : Les objets secrets et configs sont montés sous la forme d’un fichier dans les conteneurs.
+
+```YAML
+services:
+  frontend:
+    image: quay.io/example/frontend
+    networks:
+      - app-net
+    ports:
+      - "8082:8080"
+  backend:
+    image: quay.io/example/backend
+    command: sh -c "COMMAND"
+    networks: 
+      - app-net
+      - db-net
+    ports:
+      - "8081:8080"
+  db:
+    image: registry.redhat.io/rhel8/postgresql-13
+    environment:
+      POSTGRESQL_ADMIN_PASSWORD: redhat
+    ports:
+       - "5432:5432"
+    networks:
+      - db-net
+    volumes:
+      - db-vol:/var/lib/postgresql/data
+      - ./local/redhat:/var/lib/postgresql/data:Z
+ 
+networks:
+  app-net: {}
+  db-net: {}
+
+volumes:
+  db-vol: {}
+  db-vol-created-without-compose:
+     external: true
+```
+
+Si vous avez créé un volume qui n’est pas géré par Podman Compose (parce que vous avez utilisé la commande podman volume create, par exemple), vous pouvez le spécifier dans la définition des volumes avec la propriété `external: true`
+Vous pouvez également définir des montages de liaison en fournissant un chemin d’accès relatif ou absolu sur votre machine hôte. Dans l’exemple ci-dessus, Podman monte le répertoire ./local/redhat sur la machine hôte en tant que répertoire /var/lib/postgresql/data dans le conteneur
+
+On peut exécuter un fichier Compose à l'aide de la commande : `$ podman-compose up`
+Options disponible 
+-d, --detach : démarre les conteneurs en arrière-plan.
+--force-recreate : recrée les conteneurs au démarrage.
+-V, --renew-anon-volumes : recrée des volumes anonymes.
+--remove-orphans : supprime les conteneurs qui ne correspondent pas aux services définis dans le fichier Compose actuel.
