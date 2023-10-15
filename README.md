@@ -585,3 +585,58 @@ student:100000:65536
 student:100000:65536
 
 L'ID utilisateur 0 (root) est une exception, car l'utilisateur root est mappé sur l'ID utilisateur qui a démarré le conteneur. Par exemple, si un utilisateur avec l'ID 1000 démarre un conteneur qui utilise l'utilisateur root, l'utilisateur root est mappé à l'ID utilisateur hôte 1000.
+
+
+# Persistance de données
+Les volumes sont des montages de données gérés par Podman. Les montages de liaison sont des montages de données gérés par l’utilisateur.
+
+Pour lier un volume à un conteneur, voici la commande
+```bash
+$ podman run -p 8080:8080 --volume [hostpath:containerpath:options]
+$ podman run -p 8080:8080 -v [volume_name:containerpath]
+$ podman run -p 8080:8080 --mount type=TYPE,source=[hostpath],destination=[containerpath]				
+```
+
+TYPE étant le type de volume. `bind` pour les montage de liaison, `volume` pour les montages de volume, `tmpfs` pour des montage éphémère en mémoire uniquement
+> **Note** : Le paramètre mount et la méthode privilégiee pour monter des répertoires dans un container
+
+La création de volume s'effectue avec la commande 
+```bash
+$ podman volume create [volume_name]
+$ podman volume inspect [volume_name]
+```
+
+Pour les conteneurs en mode rootless, Podman stock les données de volume local dans le répertoire `$HOME/.local/share/containers/storage/volumes/`
+
+Il est possible d'importer des données d'une archive tar dans un volume à l'aide de la commande. et d'exporter des données d'un volume sur la machine local avec la commande : 
+```bash
+$ podman volume import [volume_name] [archive_name]
+$ podman volume export [volume_name] --output [archive_name]
+```
+
+Pour charger des données dans un container il es possible d'utiliser les instruction suivantes : (cela nécessite un client de base de données)
+```bash
+$ podman cp SQL_FILE TARGET_DB_CONTAINER:CONTAINER_PATH
+$ podman exec -it DATABASE_CONTAINER \
+	psql -U DATABASE_USER -d DATABASE_NAME -f CONTAINER_PATH
+```
+Si le conteneur ne possède pas ce client de base de donnée, il vous est possible d'utiliser un conteneur éphémaire pour effectuer le traitement
+```bash
+$ podman run -it --rm \
+  -e PGPASSWORD=DATABASE_PASSWORD \
+  -v ./SQL_FILE:/tmp/SQL_FILE:Z \
+  --network DATABASE_NETWORK \
+  registry.redhat.io/rhel8/postgresql-12:1-113 \
+  	psql -U DATABASE_USER -h DATABASE_CONTAINER \
+       	-d DATABASE_NAME -f /tmp/SQL_FILE
+```
+Cette commande utilise l’option SELinux Z afin de définir le contexte SELinux pour que le conteneur ait accès au SQL_FILE hôte.
+
+La commande utilise également le réseau DATABASE_NETWORK, qui permet au client psql de ce conteneur d’utiliser le nom DATABASE_CONTAINER comme nom d’hôte pour le conteneur de base de données. Pour que le service DNS fonctionne, il doit être activé sur le réseau DATABASE_NETWORK.
+
+Pour exporter les données de la base de données, vous pouvez utiliser les commandes de sauvegarde de la base de données présentes dans l’image de conteneur de la base de données. Par exemple, MySQL et PostgreSQL fournissent, respectivement, les commandes mysqldump et pg_dump.
+Par exemple pour un conteneur PostreSQL
+```bash
+$ podman exec POSTGRESQL_CONTAINER \
+  pg_dump -Fc DATABASE -f BACKUP_DUMP
+```
