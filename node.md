@@ -70,7 +70,7 @@ Par defaut, avec le réseau `podman`, le service DNS est désactivé. Lorsque le
 | `$ podman -v` | version de podman | |
 | `$ podman pull name:tag` | Récupère une image depuis un registre | La configuration de registre est spécifiée dans `/etc/containers/registries.conf`  |
 | `$ podman images` | Liste toutes les images récupérés en local | |
-| `$ podman run [options] container [commande...]`  | Execute un processus dans un conteneur en cours d'execution        |  `--name=toto` attribue un nom au conteneur. `--rm` Supprime automatiquement le conteneur lors de sa fermeture. `-p host-port:container-port` Map un port du système hot avec un port du conteneur. `-d` permet d'executer le conteneur en arrière plan (libérant ainsi le terminal). `-e NAME=value` Détermine un variable d'environnement dans le conteneur. `--net networkA,networkB` Associer le conteneur à un réseau |
+| `$ podman run [options] container [commande...]`  | Execute un processus dans un conteneur en cours d'execution        |  `--name=toto` attribue un nom au conteneur. `--rm` Supprime automatiquement le conteneur lors de sa fermeture. `-p host-port:container-port` Map un port du système hot avec un port du conteneur. `-d` permet d'executer le conteneur en arrière plan (libérant ainsi le terminal). `-e NAME=value` Détermine un variable d'environnement dans le conteneur. `--net networkA,networkB` Associer le conteneur à un réseau. `--volume /path/on/host:/path/in/container:OPTIONS {imagename}` associer un volume au conteneur, voici les options `OPTION` : `:Z` `:z`. `--mount type=TYPE,source=/path/on/host,destination=/path/in/container` Attache un volume au conteneur `TYPE`: *bind*, *volume*, *tmpfs* |
 | `$ podman create [options] container`  | Creation d'un conteneur        |  Aligné à droite |
 | `$ podman start [options] container`  | Execute un conteneur        |  Aligné à droite |
 | `$ podman pause [options] container`  | Mets en pause tous les processus d'un conteneur en cours d'excution         |    Aligné à droite |
@@ -80,15 +80,86 @@ Par defaut, avec le réseau `podman`, le service DNS est désactivé. Lorsque le
 | `$ podman restart [options] container`  | Redémarre un conteneur          |    Aligné à droite |
 | `$ podman rm [options] container`  | Supprime un conteneur stopé          |    `--force` ou `-f` force la suppression d'un conteneur en cours d'execution ou mise en pause |
 | `$ podman rmi [options] container`  | Supprime une images de l'espace de stockage local          |    Aligné à droite |
-| `$ podman exec [options] container [command ...]`  | Execute un processus dans un conteneur en cours d'execution          | `--env` ou `-e` défini une variable d'environnement (temporaire). Pour rentre la variable d'environnement persistance utilier l'option `-e` de `$ podman run`. `--interactive` ou `-i` indique au conteneur d'accepter les entrées utilisateur. `-tty` ou `-t` attache un pseudo terminal au conteneur. `--latest` ou `-l` execute la commande dans le dernier conteneur créée. On combine l'ensemble de ces options pour ouvrir un terminal interactive dans un conteneur : `$ podman exec -til /bin/bash`.  |
+| `$ podman exec [options] container [command ...]`  | Execute un processus dans un conteneur en cours d'execution          | `--env` ou `-e` défini une variable d'environnement (temporaire). Pour rentre la variable d'environnement persistance utilier l'option `-e` de `$ podman run`. `--interactive` ou `-i` indique au conteneur d'accepter les entrées utilisateur. `-tty` ou `-t` attache un pseudo terminal au conteneur. `--latest` ou `-l` execute la commande dans le dernier conteneur créée. On combine l'ensemble de ces options pour ouvrir un terminal interactive dans un conteneur : `$ podman exec -til /bin/bash`. `--net` rattache un réseau au conteneur |
 | `$ podman inspect [options] container`  | Affiche la configuration d'un conteneur ou d'une image. Paramétrage réseaux, usage CPU, variable d'environnement, status, mappage de port, volumes, ...         | Pour simplifier la recherche d'information dans la configuration du conteneur, on peut utiliser l'option `--format` et en utilisant l'annotation GO avec `{{` et `}}`. Exemple `$ podman inspect --format='{{.State.Status}}' 1a2de915f` |
 | `$ podman ps [options]`  | Liste les conteneurs | `-all` ou `-a`: Affiche également les conteneurs stopés. `--format=json` format l'output de la commande |
 | `$ podman rename [options] container`  | Modifie le nom d'un conteneur          |    Aligné à droite |
 | `$ podman stats [options] container`  | Affiche les statistique en temps réel associées aux ressources consommées par le conteneur          |    Aligné à droite |
 | `$ podman logs [options] container`  | Recherche les logs d'un conteneur          |    Aligné à droite |
 | `$ podman top [options] container`  | Affiche les processus en cours d'execution d'un conteneur          |    Aligné à droite |
-| `$ podman cp [option] [container:]path [container]destination` | Copie un fichier dans un conteneur | Récupère les fichiers de logs d'un contenu `$ podman cp a3db6c810:/tmp/logs .` (. correspond au repertoire de travail courent) |
+| `$ podman cp [option] [container:]source [container]destination` | Copie un fichier dans un conteneur | Récupère les fichiers de logs d'un contenu `$ podman cp a3db6c810:/tmp/logs .` (. correspond au repertoire de travail courent) |
+| `$ podman network create {networkname}` | Création d'un réseau | |
+| `$ podman network rm {networkname}` | Suppression d'un réseau | |
+| `$ podman network prune {networkname}` | Suppression des réseaux non utilisés| |
+| `$ podman network ls` | Lister l'ensemble des réseaux| |
+| `$ podman network connect {networkname} {containername}` | Connecter un conteneur un réseau | |
+| `$ podman network disconnect {networkname} {containername}` | Deconnecter un conteneur d'un réseau | |
+| `$ podman port --all` | liste les mappage de port de tout les conteneurs | |
 
+
+### GESTION DE REGISTRE
+| Commande  | Description          | Options |
+| :------------------------ |:----------------------- | -----:|
+| `$ skopeo copy [transport:image] [transport:image]`| | Copier l'image d'un repository en local `$ skopeo copy docker://registry.access.redhat.com/ubi9/nodejs-18 dir:/var/lib/images/nodejs-18`|
+| `$ podman login {registry}` | Se connecter à un registre | Les informations d'identification sont enregistré dans un fichier `${XDG_RUNTIME_DIR}/containers/auth.json`. Utilisation de `$ echo -n dXNlcjpodW50ZXIy pipe base64 -d` pour décoder la clé |
+| `$ podman search {imagename}` | | |
+| `$ podman push quay.io/QUAY_USER/{imagename}` | Publication d'une image | |
+| `$ podman search {imagename}` | | |
+
+### GESTION DES IMAGES
+
+`$ printenv VARIABLE` : Affiche la valeur d'une variable d'environnement
+`$ export VARIABLE='value'` : Défini la valeur d'une variable d'environnement
+
+| Commande  | Description          | Options |
+| :------------------------ |:----------------------- | -----:|
+| `$ podman build -t {imagename:tag} {file}` | Compiler une image | `--file` ou `-f` pour spécifier le fichier à compiler. `--tag` ou `-t` pour définir le nom du l'image et du tag. `--build-arg key=example-value`pour définir la valeurs des arguments |
+| `$ podman image inspect [registry/user/image:tag]` | Inspect la configuraiton de l'image| `--format` |
+| `$ podman image rm` | Supprimer une image du registre local | `--all` suprime toutes les images |
+| `$ podman image prune` | Supprime les image inutilisé | `-a` pour supprimer ceux suspendues |
+
+| `$ podman image tree {image:tag}` | Afficher la liste des couches d'images |  |
+
+| `$ podman volume create {name} ?path`  | Création d'un volume  |  |
+| `$ podman volume prune` | Supprime les volumes inutilisés  |  |
+| `$ podman volume inspect {name}` | Affiche la configuration d'un volume |  |
+| `$ podman volume import {name} {volume.tar.gz}` | Import un volume |  |
+| `$ podman volume export {name} --output {volume.tar.gz}` | Export un volume  |  |
+| `` |  |  |
+
+
+### Construction d'une image personalisées
+
+Utilisation d'une image de base universelle (UBI)
+Quatre version : standard, init, minimal et micro
+
+Langage pour créer le containerfile : DSL (Domaine Specific Language)
+
+| Instruction | Description| Remarque |
+| :---- | :----| :----|
+| `FROM` | Détermine l'image de base utilisées | Utilisation d'une image de base universelle UBI. Plusieurs version disponible : standard, init, minimal et micro. Cela influt sur la taille de l'image |
+| `WORKDIR` | Détermine le répertoir de travail à l'interieur du contenur. | Les instrcution qui suivent s'exécute à partir de ce répertoir |
+| `COPY` et `ADD` | Copie les fichier de l'hôte vers le système de fichier de l'image de conteneur  | à la différence de COPY, ADD permet l'ajout de fichier depuis une URL et permet la décompression  d'archive tar dans l'image |
+| `RUN` | Exécute une commande dans le conteneur et valide l'état résultant du conteneur dans une nouvelle couche d'image| |
+| `ENTRYPOINT` | Défini l'exécutable à exécuter au démarrage du conteneur||
+| `CMD` | Exécute une commande au démarrage du conteneur. | La commande est transmis à l'exécutable de l'ENTRYPOINT. |
+| `USER` | Modifie l'utilisateur actif dans le conteneur. | Les instruction suivante sont exécuter avec l'identité de cet utilisateur, y compris CMD|
+| `LABLE` | Rajoute des métadonnée à l'image (paire de clé, valeur) | |
+| `EXPOSE` | Ajout un port aux métadonnée d'image |  (/!\ c'est uniquement à des fins de documentation) |
+| `ENV` | Défini des variable d'environnement | |
+| `ARG` | Défini des variables au moment de la compilation |  |
+| `VOLUME` | Défini l'emplacement de stockage des données en déhors du conteneur| |
+
+Exemple d'utilisation aver ARG et ENV
+```bash
+ARG VERSION \
+    BIN_DIR
+
+ENV VERSION=${VERSION:-1.16.8} \
+    BIN_DIR=${BIN_DIR:-/usr/local/bin/}
+
+RUN curl "https://dl.example.io/${VERSION}/example-linux-amd64" -o ${BIN_DIR}/example
+```
 
 Liste des filtres de recherche usuel avec l'option `--format` de `$ podman inspect`
 
@@ -110,42 +181,6 @@ L'activation du DNS sur un réseau permet d'utiliser le nom du conteneur à la p
 Fichier de configuration `/etc/nginx/nginx.conf`
 After updated configuration, reload nginx with : `nginx -s reload`
 
-
-printenv VARIABLE
-export VARIABLE='value'
-
-
-
-
-
-
-### Création d'images personalisées
-
-Utilisation d'une image de base universelle (UBI)
-Quatre version : standard, init, minimal et micro
-
-Langage pour créer le containerfile : DSL (Domaine Specific Language)
-
-| Instruction | Description| Remarque |
-| :---- | :----| :----|
-|FROM | Détermine l'image de base utilisées | |
-|WORKDIR | Détermine le répertoir de travail à l'interieur du contenur. | Les instrcution qui suivent s'exécute à partir de ce répertoir |
-| COPY et ADD | Copie les fichier de l'hôte vers le système de fichier de l'image de conteneur  | à la différence de COPY, ADD permet l'ajout de fichier depuis une URL et permet la décompression  d'archive tar dans l'image |
-| RUN | Exécute une commande dans le conteneur et valide l'état résultant du conteneur dans une nouvelle couche d'image| |
-| ENTRYPOINT | Défini l'exécutable à exécuter au démarrage du conteneur||
-| CMD | Exécute une commande au démarrage du conteneur. | La commande est transmis à l'exécutable de l'ENTRYPOINT. |
-| USER | Modifie l'utilisateur actif dans le conteneur. | Les instruction suivante sont exécuter avec l'identité de cet utilisateur, y compris CMD|
-| LABLE | Rajoute des métadonnée à l'image (paire de clé, valeur) | |
-| EXPOSE | Ajout un port aux métadonnée d'image |  (/!\ c'est uniquement à des fins de documentation) |
-| ENV | Défini des variable d'environnement | |
-| ARG | Défini des variables au moment de la compilation | |
-| VOLUME| Défini l'emplacement de stockage des données en déhors du conteneur| |
-
-Lors de la création de l'image, si aucun tag n'est défini à la suite du nom de l'image name:tag, alors celui ci correspond à *latest*
-
-
-podman build -t imagename:tag Containerfile
-podman image tree imagename:tag         
 
 Astuces avancer pour la création de container file
 
@@ -174,15 +209,6 @@ ENV VERSION=${VERSION:-1.16.8} \
 
 RUN curl "https://dl.example.io/${VERSION}/example-linux-amd64" \
         -o ${BIN_DIR}/example
-
-#### Utiliser des volumes
-Pour stocker des données de manière permanante
-
-VOLUME /var/lib/pgsql/data
-
-Insepction d'un volume : podman volume inspect [name]
-Création d'un volume : podman volume create [name]
-Supprimer les volumes inutiliser : podman volume prune
 
 
 #### ENTRYPOINT et CMD
@@ -251,11 +277,6 @@ Le type ici: object_r doit être remplacer par container_file_t pour avoir accé
 pour cela il faut rajouter l'option :Z au volume
 `$ podman run -p 8080:8080 --volume /www:/var/www/html:Z registry.access.redhat.com/ubi8/httpd-24:latest`
 
-
-podman volume create {name}
-podman volume inspect {name}
-podman volume import {name} {volume.tar.gz}
-podman volume export {name} --output {volume.tar.gz}
 
 Montage volume tmpfs :
 `podman run -e POSTGRESQL_ADMIN_PASSWORD=redhat --network lab-net --mount  type=tmpfs,tmpfs-size=512M,destination=/var/lib/pgsql/data registry.redhat.io/rhel9/postgresql-13:1`
