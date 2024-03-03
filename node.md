@@ -18,28 +18,80 @@ Préparation à l'examin `Red Hat Certified Specialist in containerized applicat
 | `$ cp {source} {destination}`| Copie de fichier | |
 | | | |
 
+
+### DEBUGAGE
 | Chemain de fichier  | Description          | Options |
 | :------------------------ |:----------------------- | -----:|
 
 | `/etc/nginx/nginx.conf` | Fichier de configuration | |
-| | | |
+| `$ id`| indique des informations sur l'utilisateur courant : uid, gui, groups)| |
+| `$ podman run registry.access.redhat.com/ubi9/ubi id`| Determine l'utilisateur actuel dans le conteneur | |
 | `podman unshare`| | |
 | | | |
 | | | |
 | | | |
 
+Dans ce Containerfile, fait appel à l'utilisateur root (par defaut) pour démarrer le server HTTP. Ce qui peut être une source de vulnérabilité (elevation de privilège)
+```bash
+FROM registry.access.redhat.com/ubi9/ubi
+
+CMD ["python3", "-m", "http.server"]
+```
+
+Pour rendre ce Containerfile plus robuste voici comment faire
+```bash
+FROM registry.access.redhat.com/ubi9/ubi
+
+RUN adduser \
+   --no-create-home \
+   --system \
+   --shell /usr/sbin/nologin \
+   python-server
+
+USER python-server
+
+CMD ["python3", "-m", "http.server"]
+
+```
 
 ### Commande - Manipulation des images
 
 | Commande  | Description          | Options |
 | :------------------------ |:----------------------- | -----:|
 | `$ podman pull name:tag` | Récupère une image depuis un registre | La configuration des registres est spécifiée dans `/etc/containers/registries.conf`. Pour gérer et publier des images dans un registre, vous pouvez utiliser les commande skopeo ainsi que Quay.io stocker vos images |
-| `$ podman images` | Liste toutes les images récupérés en local | |
+| `$ podman image ls` | Liste toutes les images récupérés en local. | Elle sont stockées dans `~/.local/share/containers` |
 | `$ podman build -t {imagename:tag} {file}` | Compiler une image | `--file` ou `-f` pour spécifier le fichier à compiler. <br>`--tag` ou `-t` pour définir le nom du l'image et du tag. <br>`--build-arg KEY=VALUE` pour définir ou surcharger la valeurs des arguments dans le cas ou aucune valeur par défaut n'est spécifiée |
 | `$ podman image inspect [registry/user/image:tag]` | Inspect la configuraiton de l'image| `--format` |
-| `$ podman image rm` | Supprimer une image du registre local | `--all` suprime toutes les images |
+| `$ podman image rm` | Supprimer une image du registre local | `--all` suprime toutes les images <br>`-f`pour forcer la suppression. Les conteneur utilisant cette image seront stoppé et supprimé|
 | `$ podman image prune` | Supprime les image inutilisé | `-a` pour supprimer ceux suspendues |
 | `$ podman image tree {image:tag}` | Afficher la liste des couches d'images |  |
+| `$ podman image tag LOCAL_IMAGE:TAG LOCAL_IMAGE:NEW_TAG` | Création d'une nouveau tag| |
+| `$ podman search {image}`  | Recherche une image parmis le registre enregistrés dans le fichier de configuration `/etc/containers/registries.conf`| | 
+| `$ podman push {registre/user/image:tag}` | | |
+| `$ podman image rm REGISTRY/NAMESPACE/IMAGE_NAME:TAG` | Supprime une image local| `-f`pour forcer la suppression. Les conteneur utilisant cette image seront stoppé et supprimé | 
+| `` | | | 
+| `` | | | 
+| `` | | | 
+| `` | | | 
+| `` | | | 
+
+
+`--format={{.Config.ENV}}`
+`--format={{.Config.WorkingDir}}`
+`--format={{.Config.Entrypoint}}`
+`--format={{.Config.Cmd}}`
+`--format={{.Config.ExposedPorts}}`
+
+#### Gestion des registre avec Skopeo
+
+Skopeo permet de : Inspecter des images, pousser des images dans un registre, copier des images entre registre, convertire des images en OCI.
+
+`$ skopeo inspect docker://registry.access.redhat.com/ubi9/nodejs-18` : Inspecte la configuration de l'image nodejs-18 provenant du registre redhat.
+`$ skopeo cp docker://registry.access.redhat.com/ubi9/nodejs-19 docker://quary.io/{user}/nodejs-19` : Copie l'image nodejs-19 du registre redhat vet quary.io
+`$ skopeo cp docker://registry.access.redhat.com/ubi9/nodejs-19 dir:/var/lib/nodejs19 ` : Copie l'image nodejs-19 du registre redhat vers un répertoire local
+
+> Note :
+> Certain registre comme `registry.redhat.io.`, nécessite de s'authentifier pour effectuer des traitement. Pour cela il suffit de s'y connecter avec la commande `$ podman login {registre}` pour ensuite utiliser `$ podman pull {image}` du registre. Pour rappel une image est identifier par : {registre}/{user}/{image-name}:{tag}. Les information de connexion (utiliser:password) sont ensuite stocker dans le fichier `${XDG_RUNTIME_DIR}/containers/auth.json`
 
 ### Commande - Manipulation des volumes
 
