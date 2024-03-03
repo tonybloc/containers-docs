@@ -753,45 +753,6 @@ Options disponible
 
 
 
-## GESTION DES VOLUMES
-
-Pour faciliter le controle des données d'un conteneur privilégier l'utilisation de volumes
-
-`podman run --volume /path/on/host:/path/in/container:OPTIONS {imagename}`
-`podman run --mount type=TYPE,source=/path/on/host,destination=/path/in/container`
-
-Mount spécifie explicitement le type de volume.
-*bind*: pour les montages de liaison
-*volume*: pour les montages de volumes
-*tmpfs*: pour des montages éphémère en mémoire uniquement
-
-
-
-Lorsque'on utiliser un montage de liaison, on doit configurer manuellement les autorisation de fichier et d'accès SELinux.
-`$ podman run -p 8080:8080 --volume /www:/var/www/html registry.access.redhat.com/ubi8/httpd-24:latest`
-Par defaut le processus Httpd ne dispose pas des autorisation pour accéder au répertoir /var/www/html
-Pour résoudre ce problème on vérifie les droits avec : 
-`$ podman unshare ls -l /www/`
->-rw-rw-r--. 1 root root 21 Jul 12 15:21 index.html
-`$ podman unshare ls -ld /www/`
->drwxrwxr-x. 1 root root 20 Jul 12 15:21 /www/
-
-Pour résoudre les problème d'accès SELinux du répertoir /www
-`ls -Zd /www`
-system_u:object_r:default_t:s0:c228,c359 /www
-
-Le type ici: object_r doit être remplacer par container_file_t pour avoir accés au montage de liaison.
-
-pour cela il faut rajouter l'option :Z au volume
-`$ podman run -p 8080:8080 --volume /www:/var/www/html:Z registry.access.redhat.com/ubi8/httpd-24:latest`
-
-
-Montage volume tmpfs :
-`podman run -e POSTGRESQL_ADMIN_PASSWORD=redhat --network lab-net --mount  type=tmpfs,tmpfs-size=512M,destination=/var/lib/pgsql/data registry.redhat.io/rhel9/postgresql-13:1`
-
-
-
-
 
 Commande utilise
 Copie de fichier (origin > dest):  $ cp ~/DO188/labs/persisting-mounting/index.html ~/www

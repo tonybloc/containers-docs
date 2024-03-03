@@ -17,6 +17,9 @@ Préparation à l'examin `Red Hat Certified Specialist in containerized applicat
 | `$ nginx -s reload`| Après avoir mise à jours la configuration de nginx, redemarage | |
 | `$ cp {source} {destination}`| Copie de fichier | |
 | | | |
+| | | |
+| | | |
+| | | |
 
 
 ### DEBUGAGE
@@ -26,10 +29,17 @@ Préparation à l'examin `Red Hat Certified Specialist in containerized applicat
 | `/etc/nginx/nginx.conf` | Fichier de configuration | |
 | `$ id`| indique des informations sur l'utilisateur courant : uid, gui, groups)| |
 | `$ podman run registry.access.redhat.com/ubi9/ubi id`| Determine l'utilisateur actuel dans le conteneur | |
-| `podman unshare`| | |
+| `$ podman unshare`| | |
+| `$ podman logs {container}`| accéder au logs d'un container | |
+| `$ podman inspect {container} --format`| accéder au logs d'un container | |
+| `$ ss -pant`| Pour connaitre quels sont les ports utilisées| `podman exec {container} ss -pant` |
+| `$ sudo nsenter -t {ContainerPID} -n ss -pant`| Execute la commande ss-pant dans le container (dans le cas ou ss n'est pas disponibel dans le container| |
 | | | |
 | | | |
 | | | |
+
+`--format={{.NetworkSetting.Networks}}`
+`--format={{.State.Pid}}`
 
 Dans ce Containerfile, fait appel à l'utilisateur root (par defaut) pour démarrer le server HTTP. Ce qui peut être une source de vulnérabilité (elevation de privilège)
 ```bash
@@ -78,6 +88,12 @@ CMD ["python3", "-m", "http.server"]
 
 `--format={{.Config.ENV}}`
 `--format={{.Config.WorkingDir}}`
+`--format={{.Config.Entrypoint}}`
+`--format={{.Config.Cmd}}`
+`--format={{.Config.ExposedPorts}}`
+
+`--format={{.NetworkSetting.Networks}}`
+`--format={{.State.Pid}}`
 `--format={{.Config.Entrypoint}}`
 `--format={{.Config.Cmd}}`
 `--format={{.Config.ExposedPorts}}`
